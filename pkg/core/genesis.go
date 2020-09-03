@@ -168,7 +168,7 @@ func SetupGenesisBlock(db ethdb.Database, genesis *Genesis) (*params.ChainConfig
 
 	// Check whether the genesis block is already written.
 	if genesis != nil {
-		block, _ := genesis.ToBlock()
+		block, _, _ := genesis.ToBlock()
 		hash := block.Hash()
 		if hash != stored {
 			return genesis.Config, block.Hash(), &GenesisMismatchError{stored, hash}
@@ -216,9 +216,10 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 }
 
 // ToBlock creates the block and state of a genesis specification.
-func (g *Genesis) ToBlock() (*types.Block, *state.StateDB) {
+func (g *Genesis) ToBlock() (*types.Block, *state.StateDB, *state.StateDBRecord) {
 	db, _ := ethdb.NewMemDatabase()
 	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
+	statedbRecord, _ := state.NewRecord(common.Hash{}, state.NewDatabase(db))
 	for addr, account := range g.Alloc {
 		statedb.AddBalance(addr, account.Balance)
 		statedb.SetCode(addr, account.Code)
@@ -228,6 +229,7 @@ func (g *Genesis) ToBlock() (*types.Block, *state.StateDB) {
 		}
 	}
 	root := statedb.IntermediateRoot(false)
+	rootRecord := statedbRecord.IntermediateRoot(false)
 
 	// add pocContext
 	pocContext := initGenesisPocContext(g, db)
@@ -244,6 +246,7 @@ func (g *Genesis) ToBlock() (*types.Block, *state.StateDB) {
 		MixDigest:  g.Mixhash,
 		Coinbase:   g.Coinbase,
 		Root:       root,
+		RecordRoot: rootRecord,
 		PocContext: pocContextProto,
 	}
 	if g.GasLimit == 0 {
@@ -256,13 +259,13 @@ func (g *Genesis) ToBlock() (*types.Block, *state.StateDB) {
 	block := types.NewBlock(head, nil, nil, nil)
 	block.PocContext = pocContext
 
-	return block, statedb
+	return block, statedb, statedbRecord
 }
 
 // Commit writes the block and state of a genesis specification to the database.
 // The block is committed as the canonical head block.
 func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
-	block, statedb := g.ToBlock()
+	block, statedb, statedbRecord := g.ToBlock()
 
 	// add pocContext
 	if _, err := block.PocContext.CommitTo(db); err != nil {
@@ -274,6 +277,11 @@ func (g *Genesis) Commit(db ethdb.Database) (*types.Block, error) {
 	if _, err := statedb.CommitTo(db, false); err != nil {
 		return nil, fmt.Errorf("cannot write state: %v", err)
 	}
+
+	if _, err := statedbRecord.CommitTo(db, false); err != nil {
+		return nil, fmt.Errorf("cannot write stateRecord: %v", err)
+	}
+
 	if err := WriteTd(db, block.Hash(), block.NumberU64(), g.Difficulty); err != nil {
 		return nil, err
 	}

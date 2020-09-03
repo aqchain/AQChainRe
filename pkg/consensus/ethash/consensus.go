@@ -22,8 +22,8 @@ import (
 	"AQChainRe/pkg/consensus"
 	"AQChainRe/pkg/consensus/misc"
 	"AQChainRe/pkg/core/state"
-	"AQChainRe/pkg/params"
 	"AQChainRe/pkg/core/types"
+	"AQChainRe/pkg/params"
 	"bytes"
 	"errors"
 	"fmt"
@@ -512,10 +512,12 @@ func (ethash *Ethash) Prepare(chain consensus.ChainReader, header *types.Header)
 
 // Finalize implements consensus.Engine, accumulating the block and uncle rewards,
 // setting the final state and assembling the block.
-func (ethash *Ethash) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt, ctx *types.PocContext) (*types.Block, error) {
+func (ethash *Ethash) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, stateRecord *state.StateDBRecord, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt, ctx *types.PocContext) (*types.Block, error) {
 	// Accumulate any block and uncle rewards and commit the final state root
 	AccumulateRewards(chain.Config(), state, header, uncles)
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
+	header.RecordRoot = stateRecord.IntermediateRoot(chain.Config().IsEIP158(header.Number))
+
 	// Header seems complete, assemble into a block and return
 	return types.NewBlock(header, txs, uncles, receipts), nil
 }

@@ -29,7 +29,6 @@ import (
 	"sort"
 	"sync/atomic"
 	"time"
-
 )
 
 var (
@@ -73,6 +72,7 @@ type Header struct {
 	Validator   common.Address   `json:"validator"        gencodec:"required"`
 	Coinbase    common.Address   `json:"coinbase"         gencodec:"required"`
 	Root        common.Hash      `json:"stateRoot"        gencodec:"required"`
+	RecordRoot  common.Hash      `json:"stateRecordRoot"        gencodec:"required"`
 	TxHash      common.Hash      `json:"transactionsRoot" gencodec:"required"`
 	ReceiptHash common.Hash      `json:"receiptsRoot"     gencodec:"required"`
 	PocContext  *PocContextProto `json:"pocContext"      gencodec:"required"`
@@ -112,6 +112,7 @@ func (h *Header) HashNoNonce() common.Hash {
 		h.Validator,
 		h.Coinbase,
 		h.Root,
+		h.RecordRoot,
 		h.TxHash,
 		h.ReceiptHash,
 		h.Bloom,
@@ -325,6 +326,7 @@ func (b *Block) Bloom() Bloom              { return b.header.Bloom }
 func (b *Block) Validator() common.Address { return b.header.Validator }
 func (b *Block) Coinbase() common.Address  { return b.header.Coinbase }
 func (b *Block) Root() common.Hash         { return b.header.Root }
+func (b *Block) RecordRoot() common.Hash   { return b.header.RecordRoot }
 func (b *Block) ParentHash() common.Hash   { return b.header.ParentHash }
 func (b *Block) TxHash() common.Hash       { return b.header.TxHash }
 func (b *Block) ReceiptHash() common.Hash  { return b.header.ReceiptHash }
@@ -424,9 +426,10 @@ func (h *Header) String() string {
 	Validator:	    %x
 	Coinbase:	    %x
 	Root:		    %x
+	RecordRoot:		%x
 	TxSha		    %x
 	ReceiptSha:	    %x
-    PocContext:    %x
+    PocContext:     %x
 	Bloom:		    %x
 	Difficulty:	    %v
 	Number:		    %v
@@ -436,7 +439,7 @@ func (h *Header) String() string {
 	Extra:		    %s
 	MixDigest:      %x
 	Nonce:		    %x
-]`, h.Hash(), h.ParentHash, h.UncleHash, h.Validator, h.Coinbase, h.Root, h.TxHash, h.ReceiptHash, h.PocContext, h.Bloom, h.Difficulty, h.Number, h.GasLimit, h.GasUsed, h.Time, h.Extra, h.MixDigest, h.Nonce)
+]`, h.Hash(), h.ParentHash, h.UncleHash, h.Validator, h.Coinbase, h.Root, h.RecordRoot, h.TxHash, h.ReceiptHash, h.PocContext, h.Bloom, h.Difficulty, h.Number, h.GasLimit, h.GasUsed, h.Time, h.Extra, h.MixDigest, h.Nonce)
 }
 
 type Blocks []*Block

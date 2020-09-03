@@ -27,10 +27,10 @@ import (
 	"AQChainRe/pkg/common"
 	"AQChainRe/pkg/consensus/ethash"
 	"AQChainRe/pkg/core/state"
+	"AQChainRe/pkg/core/types"
 	"AQChainRe/pkg/crypto"
 	"AQChainRe/pkg/ethdb"
 	"AQChainRe/pkg/params"
-	"AQChainRe/pkg/core/types"
 )
 
 // newTestBlockChain creates a blockchain without validation.
@@ -136,16 +136,16 @@ func testBlockChainImport(chain types.Blocks, blockchain *BlockChain) error {
 		if err != nil {
 			return err
 		}
-		statedbRecord, err := state.NewRecord(blockchain.GetBlockByHash(block.ParentHash()).Root(), blockchain.stateRecordCache)
+		statedbRecord, err := state.NewRecord(blockchain.GetBlockByHash(block.ParentHash()).RecordRoot(), blockchain.stateRecordCache)
 		if err != nil {
 			return err
 		}
-		receipts, _, usedGas, err := blockchain.Processor().Process(block, statedb,statedbRecord)
+		receipts, _, usedGas, err := blockchain.Processor().Process(block, statedb, statedbRecord)
 		if err != nil {
 			blockchain.reportBlock(block, receipts, err)
 			return err
 		}
-		err = blockchain.validator.ValidateState(block, blockchain.GetBlockByHash(block.ParentHash()), statedb, receipts, usedGas)
+		err = blockchain.validator.ValidateState(block, blockchain.GetBlockByHash(block.ParentHash()), statedb, statedbRecord, receipts, usedGas)
 		if err != nil {
 			blockchain.reportBlock(block, receipts, err)
 			return err
@@ -343,7 +343,7 @@ func testBrokenChain(t *testing.T, full bool) {
 type bproc struct{}
 
 func (bproc) ValidateBody(*types.Block) error { return nil }
-func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error {
+func (bproc) ValidateState(block, parent *types.Block, state *state.StateDB, stateRecord *state.StateDBRecord, receipts types.Receipts, usedGas *big.Int) error {
 	return nil
 }
 func (bproc) Process(block *types.Block, statedb *state.StateDB) (types.Receipts, []*types.Log, *big.Int, error) {

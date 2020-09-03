@@ -30,7 +30,7 @@ import (
 
 func TestSetupGenesis(t *testing.T) {
 	var (
-		customghash = common.HexToHash("0x3df6ab33fa1e4dbd6cb8685693397e4d2bf5a7b5f3e026b94d7abfaf300f0654")
+		customghash = common.HexToHash("0x10e7b9afad007104e76e1911f16268c90447c344a18fe5b81cf0ce449ce742f7")
 		customg     = Genesis{
 			Config: &params.ChainConfig{HomesteadBlock: big.NewInt(3)},
 			Alloc: GenesisAlloc{
@@ -101,6 +101,7 @@ func TestSetupGenesis(t *testing.T) {
 		if !reflect.DeepEqual(config, test.wantConfig) {
 			t.Errorf("%s:\nreturned %v\nwant     %v", test.name, config, test.wantConfig)
 		}
+
 		if hash != test.wantHash {
 			t.Errorf("%s: returned hash %s, want %s", test.name, hash.Hex(), test.wantHash.Hex())
 		} else if err == nil {

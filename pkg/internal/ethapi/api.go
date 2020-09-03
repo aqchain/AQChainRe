@@ -346,7 +346,7 @@ func (s *PrivateAccountAPI) SendTransaction(ctx context.Context, args SendTxArgs
 	// Assemble the transaction and sign with the wallet
 	tx := args.toTransaction()
 
-	log.Info("PrivateAccountAPI SendTransaction"+tx.String())
+	log.Info("PrivateAccountAPI SendTransaction" + tx.String())
 
 	var chainID *big.Int
 	if config := s.b.ChainConfig(); config.IsEIP155(s.b.CurrentBlock().Number()) {
@@ -616,6 +616,7 @@ func (s *PublicBlockChainAPI) rpcOutputBlock(b *types.Block, inclTx bool, fullTx
 		"sha3Uncles":       head.UncleHash,
 		"logsBloom":        head.Bloom,
 		"stateRoot":        head.Root,
+		"stateRecordRoot":  head.RecordRoot,
 		"validator":        head.Validator,
 		"coinbase":         head.Coinbase,
 		"difficulty":       (*hexutil.Big)(head.Difficulty),
@@ -861,17 +862,17 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(hash common.Hash) (map[
 	from, _ := types.Sender(signer, tx)
 
 	fields := map[string]interface{}{
-		"blockHash":         blockHash,
-		"blockNumber":       hexutil.Uint64(blockNumber),
-		"transactionHash":   hash,
-		"transactionIndex":  hexutil.Uint64(index),
-		"type":              tx.Type(),
-		"from":              from,
-		"to":                tx.To(),
-		"gasUsed":           (*hexutil.Big)(receipt.GasUsed),
-		"contractAddress":   nil,
-		"logs":              receipt.Logs,
-		"logsBloom":         receipt.Bloom,
+		"blockHash":        blockHash,
+		"blockNumber":      hexutil.Uint64(blockNumber),
+		"transactionHash":  hash,
+		"transactionIndex": hexutil.Uint64(index),
+		"type":             tx.Type(),
+		"from":             from,
+		"to":               tx.To(),
+		"gasUsed":          (*hexutil.Big)(receipt.GasUsed),
+		"contractAddress":  nil,
+		"logs":             receipt.Logs,
+		"logsBloom":        receipt.Bloom,
 	}
 
 	// Assign receipt status or post state.

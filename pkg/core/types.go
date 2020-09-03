@@ -20,7 +20,6 @@ import (
 	"AQChainRe/pkg/core/state"
 	"AQChainRe/pkg/core/types"
 	"math/big"
-
 )
 
 // Validator is an interface which defines the standard for block validation. It
@@ -33,7 +32,7 @@ type Validator interface {
 
 	// ValidateState validates the given stateDB and optionally the receipts and
 	// gas used.
-	ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas *big.Int) error
+	ValidateState(block, parent *types.Block, state *state.StateDB, stateRecord *state.StateDBRecord, receipts types.Receipts, usedGas *big.Int) error
 	// ValidatePocState validates the given poc state
 	ValidatePocState(block *types.Block) error
 }
@@ -45,5 +44,5 @@ type Validator interface {
 // of gas used in the process and return an error if any of the internal rules
 // failed.
 type Processor interface {
-	Process(block *types.Block, statedb *state.StateDB,statedbRecord *state.StateDBRecord) (types.Receipts, []*types.Log, *big.Int, error)
+	Process(block *types.Block, statedb *state.StateDB, statedbRecord *state.StateDBRecord) (types.Receipts, []*types.Log, *big.Int, error)
 }

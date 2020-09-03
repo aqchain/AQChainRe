@@ -1,5 +1,5 @@
 [Eth]
-NetworkId = 1
+NetworkId = 1357
 SyncMode = "full"
 LightPeers = 100
 DatabaseCache = 768

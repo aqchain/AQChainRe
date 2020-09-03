@@ -22,9 +22,9 @@ import (
 	"AQChainRe/pkg/consensus/misc"
 	"AQChainRe/pkg/consensus/poc"
 	"AQChainRe/pkg/core/state"
+	"AQChainRe/pkg/core/types"
 	"AQChainRe/pkg/ethdb"
 	"AQChainRe/pkg/params"
-	"AQChainRe/pkg/core/types"
 	"fmt"
 	"math/big"
 )
@@ -38,11 +38,11 @@ var (
 // BlockGen creates blocks for testing.
 // See GenerateChain for a detailed explanation.
 type BlockGen struct {
-	i       int
-	parent  *types.Block
-	chain   []*types.Block
-	header  *types.Header
-	stateDB *state.StateDB
+	i             int
+	parent        *types.Block
+	chain         []*types.Block
+	header        *types.Header
+	stateDB       *state.StateDB
 	stateDBRecord *state.StateDBRecord
 
 	txs      []*types.Transaction
@@ -73,7 +73,7 @@ func (b *BlockGen) SetExtra(data []byte) {
 // will panic during execution.
 func (b *BlockGen) AddTx(tx *types.Transaction) {
 	b.stateDB.Prepare(tx.Hash(), common.Hash{}, len(b.txs))
-	receipt, err := ApplyTransaction(b.config, nil, nil, &b.header.Coinbase, b.stateDB, b.stateDBRecord,b.header, tx)
+	receipt, err := ApplyTransaction(b.config, nil, nil, &b.header.Coinbase, b.stateDB, b.stateDBRecord, b.header, tx)
 	if err != nil {
 		panic(err)
 	}
@@ -150,8 +150,8 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, db ethdb.Dat
 		config = params.PocChainConfig
 	}
 	blocks, receipts := make(types.Blocks, n), make([]types.Receipts, n)
-	genblock := func(i int, h *types.Header, statedb *state.StateDB) (*types.Block, types.Receipts) {
-		b := &BlockGen{parent: parent, i: i, chain: blocks, header: h, stateDB: statedb, config: config}
+	genblock := func(i int, h *types.Header, statedb *state.StateDB, statedbRecord *state.StateDBRecord) (*types.Block, types.Receipts) {
+		b := &BlockGen{parent: parent, i: i, chain: blocks, header: h, stateDB: statedb, stateDBRecord: statedbRecord, config: config}
 		// Mutate the state and block according to any hard-fork specs
 		if daoBlock := config.DAOForkBlock; daoBlock != nil {
 			limit := new(big.Int).Add(daoBlock, params.DAOForkExtraRange)
@@ -170,20 +170,23 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, db ethdb.Dat
 		}
 		poc.AccumulateRewards(config, statedb, h, b.uncles)
 		root, err := statedb.CommitTo(db, config.IsEIP158(h.Number))
+		recordRoot, err := statedbRecord.CommitTo(db, config.IsEIP158(h.Number))
 		if err != nil {
 			panic(fmt.Sprintf("state write error: %v", err))
 		}
 		h.Root = root
+		h.RecordRoot = recordRoot
 		h.PocContext = parent.Header().PocContext
 		return types.NewBlock(h, b.txs, b.uncles, b.receipts), b.receipts
 	}
 	for i := 0; i < n; i++ {
 		statedb, err := state.New(parent.Root(), state.NewDatabase(db))
+		statedbRecord, err := state.NewRecord(parent.RecordRoot(), state.NewDatabase(db))
 		if err != nil {
 			panic(err)
 		}
-		header := makeHeader(config, parent, statedb)
-		block, receipt := genblock(i, header, statedb)
+		header := makeHeader(config, parent, statedb, statedbRecord)
+		block, receipt := genblock(i, header, statedb, statedbRecord)
 		blocks[i] = block
 		receipts[i] = receipt
 		parent = block
@@ -191,7 +194,7 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, db ethdb.Dat
 	return blocks, receipts
 }
 
-func makeHeader(config *params.ChainConfig, parent *types.Block, state *state.StateDB) *types.Header {
+func makeHeader(config *params.ChainConfig, parent *types.Block, state *state.StateDB, stateRecord *state.StateDBRecord) *types.Header {
 	var time *big.Int
 	if parent.Time() == nil {
 		time = big.NewInt(10)
@@ -201,6 +204,7 @@ func makeHeader(config *params.ChainConfig, parent *types.Block, state *state.St
 
 	return &types.Header{
 		Root:       state.IntermediateRoot(config.IsEIP158(parent.Number())),
+		RecordRoot: stateRecord.IntermediateRoot(config.IsEIP158(parent.Number())),
 		ParentHash: parent.Hash(),
 		Coinbase:   parent.Coinbase(),
 		Difficulty: parent.Difficulty(),

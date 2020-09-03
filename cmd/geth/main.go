@@ -34,7 +34,6 @@ var (
 	rpcFlags = []cli.Flag{
 		utils.RPCEnabledFlag,
 	}
-
 )
 
 // NewApp creates an app with sane defaults.
@@ -77,7 +76,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 	ks := stack.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
 
 	passwords := utils.MakePasswordList(ctx)
-	unlocks := []string{""}
+	unlocks := strings.Split(ctx.GlobalString(utils.UnlockedAccountFlag.Name), ",")
 	for i, account := range unlocks {
 		if trimmed := strings.TrimSpace(account); trimmed != "" {
 			unlockAccount(ctx, ks, trimmed, i, passwords)
@@ -145,6 +144,7 @@ func init() {
 		initCommand,
 		dumpCommand,
 		consoleCommand,
+		accountCommand,
 	}
 
 	app.Flags = append(app.Flags, nodeFlags...)
@@ -157,7 +157,6 @@ func init() {
 		return nil
 	}
 
-
 	app.After = func(ctx *cli.Context) error {
 
 		return nil
@@ -165,8 +164,8 @@ func init() {
 }
 
 var (
-	vmodule     = flag.String("vmodule", "", "log verbosity pattern")
-	verbosity   = flag.Int("verbosity", int(log.LvlDebug), "log verbosity (0-9)")
+	vmodule   = flag.String("vmodule", "", "log verbosity pattern")
+	verbosity = flag.Int("verbosity", int(log.LvlDebug), "log verbosity (0-9)")
 )
 
 func main() {
@@ -175,7 +174,7 @@ func main() {
 	glogger.Verbosity(log.Lvl(*verbosity))
 	glogger.Vmodule(*vmodule)
 	log.Root().SetHandler(glogger)
-	
+
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

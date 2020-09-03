@@ -58,13 +58,13 @@ type Work struct {
 	config *params.ChainConfig
 	signer types.Signer
 
-	state      *state.StateDB // apply state changes here
-	stateRecord      *state.StateDBRecord // apply state changes here
-	pocContext *types.PocContext
-	ancestors  set.Interface // ancestor set (used for checking uncle parent validity)
-	family     set.Interface // family set (used for checking uncle invalidity)
-	uncles     set.Interface // uncle set
-	tcount     int      // tx count in cycle
+	state       *state.StateDB       // apply state changes here
+	stateRecord *state.StateDBRecord // apply state changes here
+	pocContext  *types.PocContext
+	ancestors   set.Interface // ancestor set (used for checking uncle parent validity)
+	family      set.Interface // family set (used for checking uncle invalidity)
+	uncles      set.Interface // uncle set
+	tcount      int           // tx count in cycle
 
 	Block *types.Block // the new block
 
@@ -164,7 +164,7 @@ func (self *worker) setExtra(extra []byte) {
 	self.extra = extra
 }
 
-func (self *worker) pending() (*types.Block, *state.StateDB,*state.StateDBRecord) {
+func (self *worker) pending() (*types.Block, *state.StateDB, *state.StateDBRecord) {
 	self.currentMu.Lock()
 	defer self.currentMu.Unlock()
 
@@ -174,9 +174,9 @@ func (self *worker) pending() (*types.Block, *state.StateDB,*state.StateDBRecord
 			self.current.txs,
 			nil,
 			self.current.receipts,
-		), self.current.state.Copy(),self.current.stateRecord.Copy()
+		), self.current.state.Copy(), self.current.stateRecord.Copy()
 	}
-	return self.current.Block, self.current.state.Copy(),self.current.stateRecord.Copy()
+	return self.current.Block, self.current.state.Copy(), self.current.stateRecord.Copy()
 }
 
 func (self *worker) pendingBlock() *types.Block {
@@ -319,7 +319,7 @@ func (self *worker) wait() {
 			for _, log := range work.state.Logs() {
 				log.BlockHash = block.Hash()
 			}
-			stat, err := self.chain.WriteBlockAndState(block, work.receipts, work.state,work.stateRecord)
+			stat, err := self.chain.WriteBlockAndState(block, work.receipts, work.state, work.stateRecord)
 			if err != nil {
 				log.Error("Failed writing block to chain", "err", err)
 				continue
@@ -353,7 +353,7 @@ func (self *worker) makeCurrent(parent *types.Block, header *types.Header) error
 	if err != nil {
 		return err
 	}
-	stateRecord, err := self.chain.StateRecordAt(parent.Root())
+	stateRecord, err := self.chain.StateRecordAt(parent.RecordRoot())
 	if err != nil {
 		return err
 	}
@@ -362,16 +362,16 @@ func (self *worker) makeCurrent(parent *types.Block, header *types.Header) error
 		return err
 	}
 	work := &Work{
-		config:     self.config,
-		signer:     types.NewEIP155Signer(self.config.ChainId),
-		state:      state,
+		config:      self.config,
+		signer:      types.NewEIP155Signer(self.config.ChainId),
+		state:       state,
 		stateRecord: stateRecord,
-		pocContext: pocContext,
-		ancestors:  set.New(0),
-		family:     set.New(0),
-		uncles:     set.New(0),
-		header:     header,
-		createdAt:  time.Now(),
+		pocContext:  pocContext,
+		ancestors:   set.New(0),
+		family:      set.New(0),
+		uncles:      set.New(0),
+		header:      header,
+		createdAt:   time.Now(),
 	}
 
 	// when 08 is processed ancestors contain 07 (quick block)
@@ -481,7 +481,7 @@ func (self *worker) createNewWork() (*Work, error) {
 		delete(self.possibleUncles, hash)
 	}
 	// Create the new block to seal with the consensus engine
-	if work.Block, err = self.engine.Finalize(self.chain, header, work.state, work.txs, uncles, work.receipts, work.pocContext); err != nil {
+	if work.Block, err = self.engine.Finalize(self.chain, header, work.state, work.stateRecord, work.txs, uncles, work.receipts, work.pocContext); err != nil {
 		return nil, fmt.Errorf("got error when finalize block for sealing, err: %s", err)
 	}
 	work.Block.PocContext = work.pocContext
@@ -592,7 +592,7 @@ func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, c
 	snap := env.state.Snapshot()
 	snapRecord := env.stateRecord.Snapshot()
 	pocSnap := env.pocContext.Snapshot()
-	receipt,err := core.ApplyTransaction(env.config, env.pocContext, bc, &coinbase, env.state, env.stateRecord, env.header, tx)
+	receipt, err := core.ApplyTransaction(env.config, env.pocContext, bc, &coinbase, env.state, env.stateRecord, env.header, tx)
 	if err != nil {
 		env.state.RevertToSnapshot(snap)
 		env.stateRecord.RevertToSnapshot(snapRecord)

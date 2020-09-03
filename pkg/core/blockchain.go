@@ -23,6 +23,7 @@ import (
 	"AQChainRe/pkg/consensus"
 	"AQChainRe/pkg/consensus/poc"
 	"AQChainRe/pkg/core/state"
+	"AQChainRe/pkg/core/types"
 	"AQChainRe/pkg/crypto"
 	"AQChainRe/pkg/ethdb"
 	"AQChainRe/pkg/event"
@@ -30,7 +31,6 @@ import (
 	"AQChainRe/pkg/params"
 	"AQChainRe/pkg/rlp"
 	"AQChainRe/pkg/trie"
-	"AQChainRe/pkg/core/types"
 	"errors"
 	"fmt"
 	"io"
@@ -93,12 +93,12 @@ type BlockChain struct {
 	currentBlock     *types.Block // Current head of the block chain
 	currentFastBlock *types.Block // Current head of the fast-sync chain (may be above the block chain!)
 
-	stateCache   state.Database // State database to reuse between imports (contains state cache)
-	stateRecordCache   state.Database // stateRecordCache
-	bodyCache    *lru.Cache     // Cache for the most recent block bodies
-	bodyRLPCache *lru.Cache     // Cache for the most recent block bodies in RLP encoded format
-	blockCache   *lru.Cache     // Cache for the most recent entire blocks
-	futureBlocks *lru.Cache     // future blocks are blocks added for later processing
+	stateCache       state.Database // State database to reuse between imports (contains state cache)
+	stateRecordCache state.Database // stateRecordCache
+	bodyCache        *lru.Cache     // Cache for the most recent block bodies
+	bodyRLPCache     *lru.Cache     // Cache for the most recent block bodies in RLP encoded format
+	blockCache       *lru.Cache     // Cache for the most recent entire blocks
+	futureBlocks     *lru.Cache     // future blocks are blocks added for later processing
 
 	quit    chan struct{} // blockchain quit channel
 	running int32         // running must be called atomically
@@ -124,17 +124,17 @@ func NewBlockChain(chainDb ethdb.Database, config *params.ChainConfig, engine co
 	badBlocks, _ := lru.New(badBlockLimit)
 
 	bc := &BlockChain{
-		config:       config,
-		chainDb:      chainDb,
-		stateCache:   state.NewDatabase(chainDb),
-		stateRecordCache:   state.NewDatabase(chainDb),
-		quit:         make(chan struct{}),
-		bodyCache:    bodyCache,
-		bodyRLPCache: bodyRLPCache,
-		blockCache:   blockCache,
-		futureBlocks: futureBlocks,
-		engine:       engine,
-		badBlocks:    badBlocks,
+		config:           config,
+		chainDb:          chainDb,
+		stateCache:       state.NewDatabase(chainDb),
+		stateRecordCache: state.NewDatabase(chainDb),
+		quit:             make(chan struct{}),
+		bodyCache:        bodyCache,
+		bodyRLPCache:     bodyRLPCache,
+		blockCache:       blockCache,
+		futureBlocks:     futureBlocks,
+		engine:           engine,
+		badBlocks:        badBlocks,
 	}
 	bc.SetValidator(NewBlockValidator(config, bc, engine))
 	bc.SetProcessor(NewStateProcessor(config, bc, engine))
@@ -197,7 +197,7 @@ func (bc *BlockChain) loadLastState() error {
 		return bc.Reset()
 	}
 
-	if _, err := state.NewRecord(currentBlock.Root(), bc.stateRecordCache); err != nil {
+	if _, err := state.NewRecord(currentBlock.RecordRoot(), bc.stateRecordCache); err != nil {
 		// Dangling block without a state associated, init from scratch
 		log.Warn("Head stateRecord missing, resetting chain", "number", currentBlock.Number(), "hash", currentBlock.Hash())
 		return bc.Reset()
@@ -267,7 +267,7 @@ func (bc *BlockChain) SetHead(head uint64) error {
 			// Rewound state missing, rolled back to before pivot, reset to genesis
 			bc.currentBlock = nil
 		}
-		if _, err := state.NewRecord(bc.currentBlock.Root(), bc.stateRecordCache); err != nil {
+		if _, err := state.NewRecord(bc.currentBlock.RecordRoot(), bc.stateRecordCache); err != nil {
 			// Rewound state missing, rolled back to before pivot, reset to genesis
 			bc.currentBlock = nil
 		}
@@ -823,7 +823,7 @@ func (bc *BlockChain) WriteBlockAndState(block *types.Block, receipts []*types.R
 		return NonStatTy, err
 	}
 	//
-	if _, err := stateRecord.CommitTo(batch,bc.config.IsEIP158(block.Number()));err != nil {
+	if _, err := stateRecord.CommitTo(batch, bc.config.IsEIP158(block.Number())); err != nil {
 		return NonStatTy, err
 	}
 
@@ -994,20 +994,20 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			return i, events, coalescedLogs, err
 		}
 
-		stateDBRecord, err := state.NewRecord(parent.Root(), bc.stateRecordCache)
+		stateDBRecord, err := state.NewRecord(parent.RecordRoot(), bc.stateRecordCache)
 		if err != nil {
 			return i, events, coalescedLogs, err
 		}
 
 		// Process block using the parent stateDB as reference point.
-		receipts, logs, usedGas, err := bc.processor.Process(block, stateDB,stateDBRecord)
+		receipts, logs, usedGas, err := bc.processor.Process(block, stateDB, stateDBRecord)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			return i, events, coalescedLogs, err
 		}
 
 		// Validate the stateDB using the default validator
-		err = bc.Validator().ValidateState(block, parent, stateDB, receipts, usedGas)
+		err = bc.Validator().ValidateState(block, parent, stateDB, stateDBRecord, receipts, usedGas)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			return i, events, coalescedLogs, err
@@ -1030,7 +1030,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 
 		// Validate the poc stateDB using the default validator
 		// Write the block to the chain and get the status.
-		status, err := bc.WriteBlockAndState(block, receipts, stateDB,stateDBRecord)
+		status, err := bc.WriteBlockAndState(block, receipts, stateDB, stateDBRecord)
 		if err != nil {
 			return i, events, coalescedLogs, err
 		}

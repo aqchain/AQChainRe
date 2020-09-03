@@ -19,10 +19,10 @@ package core
 import (
 	"AQChainRe/pkg/common"
 	"AQChainRe/pkg/consensus"
+	"AQChainRe/pkg/core/types"
 	"AQChainRe/pkg/ethdb"
 	"AQChainRe/pkg/log"
 	"AQChainRe/pkg/params"
-	"AQChainRe/pkg/core/types"
 	crand "crypto/rand"
 	"errors"
 	"fmt"
@@ -346,6 +346,7 @@ func (hc *HeaderChain) GetHeader(hash common.Hash, number uint64) *types.Header 
 	if header, ok := hc.headerCache.Get(hash); ok {
 		return header.(*types.Header)
 	}
+	log.Debug(hash.String())
 	header := GetHeader(hc.chainDb, hash, number)
 	if header == nil {
 		return nil

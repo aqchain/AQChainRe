@@ -52,7 +52,7 @@ func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consen
 // Process returns the receipts and logs accumulated during the process and
 // returns the amount of gas that was used in the process. If any of the
 // transactions failed to execute due to insufficient gas it will return an error.
-func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB,statedbRecord *state.StateDBRecord) (types.Receipts, []*types.Log, *big.Int, error) {
+func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, statedbRecord *state.StateDBRecord) (types.Receipts, []*types.Log, *big.Int, error) {
 	var (
 		receipts     types.Receipts
 		totalUsedGas = big.NewInt(0)
@@ -67,7 +67,9 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB,stat
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
-		receipt, err := ApplyTransaction(p.config, block.PocCtx(), p.bc, nil,statedb,statedbRecord, header, tx)
+		statedbRecord.Prepare(tx.Hash(), block.Hash(), i)
+
+		receipt, err := ApplyTransaction(p.config, block.PocCtx(), p.bc, nil, statedb, statedbRecord, header, tx)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -75,7 +77,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB,stat
 		allLogs = append(allLogs, receipt.Logs...)
 	}
 	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
-	p.engine.Finalize(p.bc, header, statedb, block.Transactions(), block.Uncles(), receipts, block.PocCtx())
+	p.engine.Finalize(p.bc, header, statedb, statedbRecord, block.Transactions(), block.Uncles(), receipts, block.PocCtx())
 
 	return receipts, allLogs, totalUsedGas, nil
 }
@@ -85,7 +87,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB,stat
 // for the transaction, gas used and an error if the transaction failed,
 // indicating the block was invalid.
 // 交易执行的过程
-func ApplyTransaction(config *params.ChainConfig, pocContext *types.PocContext, bc *BlockChain, coinbase *common.Address, statedb *state.StateDB, statedbRecord *state.StateDBRecord,header *types.Header, tx *types.Transaction) (*types.Receipt, error) {
+func ApplyTransaction(config *params.ChainConfig, pocContext *types.PocContext, bc *BlockChain, coinbase *common.Address, statedb *state.StateDB, statedbRecord *state.StateDBRecord, header *types.Header, tx *types.Transaction) (*types.Receipt, error) {
 	// 转换成Message类型
 	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number))
 	if err != nil {
@@ -101,22 +103,22 @@ func ApplyTransaction(config *params.ChainConfig, pocContext *types.PocContext, 
 	var failed bool
 
 	// 没有了evm 直接区分三种交易类型进行分别处理 转账 共识 数据记录
-	if msg.Type() == types.Binary{
-		_, failed ,err = ApplyMessage(msg,statedb)
+	if msg.Type() == types.Binary {
+		_, failed, err = ApplyMessage(msg, statedb)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if msg.Type() == types.ConfirmationData ||  msg.Type() == types.AuthorizationData || msg.Type() == types.TransferData{
-		failed, err = ApplyDataMessage(msg,statedb,statedbRecord)
+	if msg.Type() == types.ConfirmationData || msg.Type() == types.AuthorizationData || msg.Type() == types.TransferData {
+		failed, err = ApplyDataMessage(msg, statedb, statedbRecord)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if msg.Type() == types.LoginCandidate ||  msg.Type() == types.LogoutCandidate{
-		err = applyPocMessage(pocContext,msg)
+	if msg.Type() == types.LoginCandidate || msg.Type() == types.LogoutCandidate {
+		err = applyPocMessage(pocContext, msg)
 		if err != nil {
 			return nil, err
 		}
@@ -135,7 +137,7 @@ func ApplyTransaction(config *params.ChainConfig, pocContext *types.PocContext, 
 
 	// Create a new receipt for the transaction, storing the intermediate root and gas used by the tx
 	// based on the eip phase, we're passing wether the root touch-delete accounts.
-	receipt := types.NewReceipt(root,rootRecord,failed)
+	receipt := types.NewReceipt(root, rootRecord, failed)
 	receipt.TxHash = tx.Hash()
 
 	// Set the receipt logs and create a bloom for filtering

@@ -96,7 +96,10 @@ func initGenesis(ctx *cli.Context) error {
 			utils.Fatalf("Failed to write genesis block: %v", err)
 		}
 		log.Info("Successfully wrote genesis state", "database", name, "hash", hash)
+		header := core.GetHeader(chaindb, hash, 0)
+		log.Debug(header.String())
 	}
+
 	return nil
 }
 

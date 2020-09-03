@@ -6,6 +6,7 @@ import (
 	"AQChainRe/pkg/consensus"
 	"AQChainRe/pkg/consensus/misc"
 	"AQChainRe/pkg/core/state"
+	"AQChainRe/pkg/core/types"
 	"AQChainRe/pkg/crypto"
 	"AQChainRe/pkg/crypto/sha3"
 	"AQChainRe/pkg/ethdb"
@@ -14,7 +15,6 @@ import (
 	"AQChainRe/pkg/rlp"
 	"AQChainRe/pkg/rpc"
 	"AQChainRe/pkg/trie"
-	"AQChainRe/pkg/core/types"
 	"bytes"
 	"encoding/binary"
 	"errors"
@@ -113,6 +113,7 @@ func sigHash(header *types.Header) (hash common.Hash) {
 		header.Validator,
 		header.Coinbase,
 		header.Root,
+		header.RecordRoot,
 		header.TxHash,
 		header.ReceiptHash,
 		header.Bloom,
@@ -363,11 +364,12 @@ func AccumulateRewards(config *params.ChainConfig, state *state.StateDB, header 
 	state.AddBalance(header.Coinbase, reward)
 }
 
-func (d *Poc) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction,
+func (d *Poc) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, stateRecord *state.StateDBRecord, txs []*types.Transaction,
 	uncles []*types.Header, receipts []*types.Receipt, pocContext *types.PocContext) (*types.Block, error) {
 	// Accumulate block rewards and commit the final state root
 	AccumulateRewards(chain.Config(), state, header, uncles)
 	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
+	header.RecordRoot = stateRecord.IntermediateRoot(chain.Config().IsEIP158(header.Number))
 
 	parent := chain.GetHeaderByHash(header.ParentHash)
 	epochContext := &EpochContext{
@@ -536,17 +538,17 @@ func updateMintCnt(parentBlockTime, currentBlockTime int64, validator common.Add
 }
 
 // 海绵函数计算贡献值
-func AccumulateContribution(pocContext *types.PocContext,address common.Address) (*big.Int,error){
+func AccumulateContribution(pocContext *types.PocContext, address common.Address) (*big.Int, error) {
 	tx, err := pocContext.GetLastedTx(address)
 	if err != nil {
 		return big.NewInt(0), err
 	}
 
-	t:= big0.Sub(big.NewInt(time.Now().Unix()),tx.RecordTime)
+	t := big0.Sub(big.NewInt(time.Now().Unix()), tx.RecordTime)
 	// 增长基数
-	a1:=big.NewInt(2)
+	a1 := big.NewInt(2)
 	// 恢复控制
-	a2:=big.NewInt(3600)
-	c:= a1.Mul(a1,t.Div(t,a2))
+	a2 := big.NewInt(3600)
+	c := a1.Mul(a1, t.Div(t, a2))
 	return c, nil
 }

@@ -20,8 +20,8 @@ import (
 	"AQChainRe/pkg/common/math"
 	"AQChainRe/pkg/consensus"
 	"AQChainRe/pkg/core/state"
-	"AQChainRe/pkg/params"
 	"AQChainRe/pkg/core/types"
+	"AQChainRe/pkg/params"
 	"fmt"
 	"math/big"
 )
@@ -75,7 +75,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // transition, such as amount of used gas, the receipt roots and the state root
 // itself. ValidateState returns a database batch if the validation was a success
 // otherwise nil and an error is returned.
-func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, receipts types.Receipts, usedGas *big.Int) error {
+func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, statedbRecord *state.StateDBRecord, receipts types.Receipts, usedGas *big.Int) error {
 	header := block.Header()
 	if block.GasUsed().Cmp(usedGas) != 0 {
 		return fmt.Errorf("invalid gas used (remote: %v local: %v)", block.GasUsed(), usedGas)
@@ -96,6 +96,11 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 	if root := statedb.IntermediateRoot(v.config.IsEIP158(header.Number)); header.Root != root {
 		return fmt.Errorf("invalid merkle root (remote: %x local: %x)", header.Root, root)
 	}
+
+	if root := statedbRecord.IntermediateRoot(v.config.IsEIP158(header.Number)); header.RecordRoot != root {
+		return fmt.Errorf("invalid merkle root for Record (remote: %x local: %x)", header.RecordRoot, root)
+	}
+
 	return nil
 }
 

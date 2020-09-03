@@ -40,6 +40,7 @@ func TestBlockEncoding(t *testing.T) {
 			Coinbase:   common.HexToAddress("8888f1f195afa192cfee860698584c030f4c9db1"),
 			MixDigest:  common.HexToHash("bd4472abb6659ebe3ee06ee4d7b72a00a9f4d001caca51342001075469aff498"),
 			Root:       common.HexToHash("ef1552a40b7165c3cd773806b9e0c165b75356e0314bf0706f279c729f51e017"),
+			RecordRoot: common.HexToHash("ef1552a40b7165c3cd773806b9e0c165b75356e0314bf0706f279c729f51e017"),
 			Nonce:      EncodeNonce(uint64(0xa13a5a8c8f2bb1c4)),
 			Time:       big.NewInt(1426516743),
 			PocContext: pocContext.ToProto(),
@@ -71,6 +72,7 @@ func TestBlockEncoding(t *testing.T) {
 	check("Coinbase", block.Coinbase(), common.HexToAddress("8888f1f195afa192cfee860698584c030f4c9db1"))
 	check("MixDigest", block.MixDigest(), common.HexToHash("bd4472abb6659ebe3ee06ee4d7b72a00a9f4d001caca51342001075469aff498"))
 	check("Root", block.Root(), common.HexToHash("ef1552a40b7165c3cd773806b9e0c165b75356e0314bf0706f279c729f51e017"))
+	check("RecordRoot", block.RecordRoot(), common.HexToHash("ef1552a40b7165c3cd773806b9e0c165b75356e0314bf0706f279c729f51e017"))
 	check("Nonce", block.Nonce(), uint64(0xa13a5a8c8f2bb1c4))
 	check("Time", block.Time(), big.NewInt(1426516743))
 	check("Size", block.Size(), common.StorageSize(len(blockEnc)))
