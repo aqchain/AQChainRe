@@ -165,7 +165,7 @@ func init() {
 
 var (
 	vmodule   = flag.String("vmodule", "", "log verbosity pattern")
-	verbosity = flag.Int("verbosity", int(log.LvlDebug), "log verbosity (0-9)")
+	verbosity = flag.Int("verbosity", int(log.LvlInfo), "log verbosity (0-9)")
 )
 
 func main() {
