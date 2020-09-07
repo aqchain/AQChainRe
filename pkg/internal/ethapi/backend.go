@@ -30,7 +30,6 @@ import (
 	"AQChainRe/pkg/rpc"
 	"context"
 	"math/big"
-
 )
 
 // Backend interface provides the common API services (that are provided by
@@ -40,6 +39,7 @@ type Backend interface {
 	Downloader() *downloader.Downloader
 	ProtocolVersion() int
 	ChainDb() ethdb.Database
+	SuggestPrice(ctx context.Context) (*big.Int, error)
 	EventMux() *event.TypeMux
 	AccountManager() *accounts.Manager
 	// BlockChain API
@@ -47,6 +47,7 @@ type Backend interface {
 	HeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Header, error)
 	BlockByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Block, error)
 	StateAndHeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*state.StateDB, *types.Header, error)
+	StateRecordAndHeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*state.StateDBRecord, *types.Header, error)
 	GetBlock(ctx context.Context, blockHash common.Hash) (*types.Block, error)
 	GetReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error)
 	GetTd(blockHash common.Hash) *big.Int

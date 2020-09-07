@@ -21,6 +21,7 @@ import (
 	"AQChainRe/pkg/core/state"
 	"AQChainRe/pkg/core/types"
 	"AQChainRe/pkg/log"
+	"AQChainRe/pkg/rlp"
 	"errors"
 	"fmt"
 	"math/big"
@@ -29,7 +30,7 @@ import (
 var (
 	Big0                         = big.NewInt(0)
 	errInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
-	ErrInsufficientBalance      = errors.New("insufficient balance for transfer")
+	ErrInsufficientBalance       = errors.New("insufficient balance for transfer")
 )
 
 /*
@@ -76,14 +77,14 @@ type Message interface {
 }
 
 // NewStateTransition initialises and returns a new state transition object.
-func NewStateTransition(msg Message,statedb *state.StateDB) *StateTransition {
+func NewStateTransition(msg Message, statedb *state.StateDB) *StateTransition {
 	return &StateTransition{
 		msg:        msg,
 		gasPrice:   msg.GasPrice(),
 		initialGas: new(big.Int),
 		value:      msg.Value(),
 		data:       msg.Data(),
-		statedb:    statedb ,
+		statedb:    statedb,
 	}
 }
 
@@ -94,8 +95,8 @@ func NewStateTransition(msg Message,statedb *state.StateDB) *StateTransition {
 // the gas used (which includes gas refunds) and an error if it failed. An error always
 // indicates a core error meaning that the message would always fail for that particular
 // state and would never be accepted within a block.
-func ApplyMessage(msg Message,statedb *state.StateDB) ([]byte, bool ,error) {
-	st := NewStateTransition(msg,statedb)
+func ApplyMessage(msg Message, statedb *state.StateDB) ([]byte, bool, error) {
+	st := NewStateTransition(msg, statedb)
 	return st.TransitionDb()
 }
 
@@ -141,14 +142,14 @@ func (st *StateTransition) preCheck() error {
 // TransitionDb will transition the state by applying the current message and returning the result
 // including the required gas for the operation as well as the used gas. It returns an error if it
 // failed. An error indicates a consensus issue.
-func (st *StateTransition) TransitionDb() (ret []byte, failed bool ,err error) {
+func (st *StateTransition) TransitionDb() (ret []byte, failed bool, err error) {
 	if err = st.preCheck(); err != nil {
 		return
 	}
 	msg := st.msg
 	sender := st.from()
 	recipient := st.to()
-	value:= msg.Value()
+	value := msg.Value()
 	stateDB := st.statedb
 
 	// 增加账户的交易数
@@ -166,7 +167,6 @@ func (st *StateTransition) TransitionDb() (ret []byte, failed bool ,err error) {
 
 	// 转账
 	Transfer(stateDB, sender, recipient, value)
-
 
 	/*
 		if msg.Type() == types.Binary {
@@ -205,7 +205,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, failed bool ,err error) {
 				}
 		}*/
 
-	return ret, failed ,err
+	return ret, failed, err
 }
 
 // CanTransfer checks wether there are enough funds in the address' account to make a transfer.
@@ -232,8 +232,8 @@ func applyPocMessage(pocContext *types.PocContext, msg types.Message) error {
 	return nil
 }
 
-func ApplyDataMessage(msg Message,statedb *state.StateDB,statedbRecord *state.StateDBRecord)  (failed bool ,err error) {
-	st := NewStateTransition(msg,statedb)
+func ApplyDataMessage(msg Message, statedb *state.StateDB, statedbRecord *state.StateDBRecord) (failed bool, err error) {
+	st := NewStateTransition(msg, statedb)
 
 	if err = st.preCheck(); err != nil {
 		return
@@ -241,49 +241,53 @@ func ApplyDataMessage(msg Message,statedb *state.StateDB,statedbRecord *state.St
 
 	msg = st.msg
 	sender := st.from()
-	hash:= common.BytesToHash(msg.Data())
-
+	data := msg.Data()
+	fmt.Println(data)
+	b, _ := rlp.EncodeToBytes(msg.Data())
+	fmt.Println(b)
+	hash := common.BytesToHash(b)
+	fmt.Println(hash)
 	// 增加账户的交易数
 	st.statedb.SetNonce(sender, st.statedb.GetNonce(sender)+1)
 
 	switch msg.Type() {
 	case types.ConfirmationData:
 		// 检查数据唯一性
-		if statedbRecord.Exist(hash){
-			return true,errors.New("")
+		if statedbRecord.Exist(hash) {
+			return true, errors.New("")
 		}
 
 		// stateRecord 生成记录
-		statedbRecord.CreateRecord(hash)
+		obj := statedbRecord.GetOrNewStateObject(hash)
+		obj.SetOrigin(sender)
+		obj.SetOwner(sender)
 
 		// 贡献值计算 先直接加1e+18
-		statedb.AddContribution(sender,big.NewInt(1e+18))
+		statedb.AddContribution(sender, big.NewInt(1e+18))
 		log.Info("ConfirmationData Add 1e+18 Contribution")
-		log.Info(fmt.Sprintf("Transition Sender %s",sender))
+		log.Info(fmt.Sprintf("Transition Sender %s", sender))
 
 	case types.AuthorizationData:
 	case types.TransferData:
 		// 检查是否可以进行转移
-		if statedbRecord.GetOwner(hash).Hash()!= sender.Hash(){
-			return true,errors.New("")
+		if statedbRecord.GetOwner(hash).Hash() != sender.Hash() {
+			return true, errors.New("")
 		}
 
 		// 状态
-		if statedbRecord.GetStatus(hash) != 0{
-			return true,errors.New("")
+		if statedbRecord.GetStatus(hash) != 0 {
+			return true, errors.New("")
 		}
 
 		// 转移拥有者
-		statedbRecord.SetOwner(hash,st.to())
+		statedbRecord.SetOwner(hash, st.to())
 
 		// 贡献值
-		statedb.AddContribution(sender,big.NewInt(1e+18))
+		statedb.AddContribution(sender, big.NewInt(1e+18))
 		log.Info("TransferData Add 1e+18 Contribution")
-		log.Info(fmt.Sprintf("Transition Sender %s",sender))
+		log.Info(fmt.Sprintf("Transition Sender %s", sender))
 
 	}
 
-	return false,err
+	return false, err
 }
-
-

@@ -21,6 +21,9 @@ import (
 	"AQChainRe/pkg/common/hexutil"
 	"AQChainRe/pkg/core"
 	"AQChainRe/pkg/eth/downloader"
+	"AQChainRe/pkg/eth/gasprice"
+	"AQChainRe/pkg/params"
+	"math/big"
 	"os"
 	"os/user"
 )
@@ -31,6 +34,7 @@ var DefaultConfig = Config{
 	NetworkId:     1357,
 	LightPeers:    20,
 	DatabaseCache: 128,
+	GasPrice:      big.NewInt(18 * params.Shannon),
 
 	TxPool: core.DefaultTxPoolConfig,
 }
@@ -70,8 +74,13 @@ type Config struct {
 	MinerThreads int            `toml:",omitempty"`
 	ExtraData    []byte         `toml:",omitempty"`
 
+	GasPrice *big.Int
+
 	// Transaction pool options
 	TxPool core.TxPoolConfig
+
+	// Gas Price Oracle options
+	GPO gasprice.Config
 
 	// Enables tracking of SHA3 preimages in the VM
 	EnablePreimageRecording bool

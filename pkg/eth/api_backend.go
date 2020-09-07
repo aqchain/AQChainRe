@@ -24,6 +24,7 @@ import (
 	"AQChainRe/pkg/core/state"
 	"AQChainRe/pkg/core/types"
 	"AQChainRe/pkg/eth/downloader"
+	"AQChainRe/pkg/eth/gasprice"
 	"AQChainRe/pkg/ethdb"
 	"AQChainRe/pkg/event"
 	"AQChainRe/pkg/params"
@@ -35,6 +36,7 @@ import (
 // EthApiBackend implements ethapi.Backend for full nodes
 type EthApiBackend struct {
 	eth *Ethereum
+	gpo *gasprice.Oracle
 }
 
 func (b *EthApiBackend) ChainConfig() *params.ChainConfig {
@@ -79,7 +81,7 @@ func (b *EthApiBackend) BlockByNumber(ctx context.Context, blockNr rpc.BlockNumb
 func (b *EthApiBackend) StateAndHeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*state.StateDB, *types.Header, error) {
 	// Pending state is only known by the miner
 	if blockNr == rpc.PendingBlockNumber {
-		block, state ,_ := b.eth.miner.Pending()
+		block, state, _ := b.eth.miner.Pending()
 		return state, block.Header(), nil
 	}
 	// Otherwise resolve the block number and return its state
@@ -89,6 +91,21 @@ func (b *EthApiBackend) StateAndHeaderByNumber(ctx context.Context, blockNr rpc.
 	}
 	stateDb, err := b.eth.BlockChain().StateAt(header.Root)
 	return stateDb, header, err
+}
+
+func (b *EthApiBackend) StateRecordAndHeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*state.StateDBRecord, *types.Header, error) {
+	// Pending state is only known by the miner
+	if blockNr == rpc.PendingBlockNumber {
+		block, _, stateRecord := b.eth.miner.Pending()
+		return stateRecord, block.Header(), nil
+	}
+	// Otherwise resolve the block number and return its state
+	header, err := b.HeaderByNumber(ctx, blockNr)
+	if header == nil || err != nil {
+		return nil, nil, err
+	}
+	stateDbRecord, err := b.eth.BlockChain().StateRecordAt(header.RecordRoot)
+	return stateDbRecord, header, err
 }
 
 func (b *EthApiBackend) GetBlock(ctx context.Context, blockHash common.Hash) (*types.Block, error) {
@@ -184,4 +201,8 @@ func (b *EthApiBackend) ServiceFilter(ctx context.Context, session *bloombits.Ma
 	for i := 0; i < bloomFilterThreads; i++ {
 		go session.Multiplex(bloomRetrievalBatch, bloomRetrievalWait, b.eth.bloomRequests)
 	}
+}
+
+func (b *EthApiBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
+	return b.gpo.SuggestPrice(ctx)
 }

@@ -20,7 +20,9 @@ import (
 	"AQChainRe/pkg/common"
 	"AQChainRe/pkg/crypto"
 	"AQChainRe/pkg/ethdb"
+	"AQChainRe/pkg/rlp"
 	"bytes"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -28,8 +30,8 @@ import (
 )
 
 type StateSuite struct {
-	db    *ethdb.MemDatabase
-	state *StateDB
+	db          *ethdb.MemDatabase
+	state       *StateDB
 	stateRecord *StateDBRecord
 }
 
@@ -37,7 +39,6 @@ var _ = checker.Suite(&StateSuite{})
 
 var toAddr = common.BytesToAddress
 var toHash = common.BytesToHash
-
 
 func (s *StateSuite) TestDump(c *checker.C) {
 	// generate a few entries
@@ -50,14 +51,20 @@ func (s *StateSuite) TestDump(c *checker.C) {
 	obj3.SetBalance(big.NewInt(44))
 	obj3.SetContribution(big.NewInt(44))
 
+	obj4 := s.stateRecord.GetOrNewStateObject(toHash([]byte{0x02}))
+	obj4.SetOrigin(toAddr([]byte{0x02}))
+	obj4.SetOwner(toAddr([]byte{0x02}))
+
 	// write some of them to the trie
 	/*s.state.updateStateObject(obj1)
 	s.state.updateStateObject(obj2)*/
 	s.state.updateStateObject(obj3)
+	s.stateRecord.updateStateObject(obj4)
 	s.state.CommitTo(s.db, false)
+	s.stateRecord.CommitTo(s.db, false)
 
 	// check that dump contains the state objects that are in trie
-	got := string(s.state.Dump())
+	got := string(s.stateRecord.Dump())
 	want := `{
     "root": "0600aa778ff1a0c02c0b3327be83e8508e77cf6d9ae1d2f18a7fbd947fe34856",
     "accounts": {
@@ -97,18 +104,21 @@ func (s *StateSuite) TestDump(c *checker.C) {
 
 func (s *StateSuite) TestDump2(c *checker.C) {
 	// generate a few entries
-	obj1 := s.stateRecord.GetOrNewStateObject(toHash([]byte{0x01}))
-	obj1.SetOrigin(toAddr([]byte{0x01,0x01,0x01,0x01,0x01}))
-
+	b, _ := rlp.EncodeToBytes("test")
+	obj1 := s.stateRecord.GetOrNewStateObject(toHash(b))
+	obj1.SetOrigin(toAddr([]byte{0x01, 0x01, 0x01, 0x01, 0x01}))
 	// write some of them to the trie
 	s.stateRecord.updateStateObject(obj1)
 	_, err := s.stateRecord.CommitTo(s.db, false)
-	if err !=nil{
+	if err != nil {
 		c.FailNow()
 	}
 
 	got := string(s.stateRecord.Dump())
+
+	fmt.Println(s.stateRecord.GetOrigin(toHash(b)).String())
 	c.Errorf("dump mismatch:\ngot: %s\nwant: %s\n", got, "")
+
 }
 
 func (s *StateSuite) SetUpTest(c *checker.C) {

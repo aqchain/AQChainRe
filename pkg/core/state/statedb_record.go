@@ -174,6 +174,8 @@ func (self *StateDBRecord) GetState(a common.Hash, b common.Hash) common.Hash {
 }
 
 func (self *StateDBRecord) GetOrigin(addr common.Hash) common.Address {
+	fmt.Println(addr.String())
+	fmt.Println(addr)
 	stateObject := self.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.Origin()
@@ -357,7 +359,8 @@ func (self *StateDBRecord) createObject(hash common.Hash) (newobj, prev *stateOb
 func (self *StateDBRecord) CreateRecord(addr common.Hash) {
 	new, prev := self.createObject(addr)
 	if prev != nil {
-		new.setOrigin(prev.data.Origin)
+		prev.setOrigin(new.data.Origin)
+		prev.setOwner(new.data.Origin)
 	}
 }
 

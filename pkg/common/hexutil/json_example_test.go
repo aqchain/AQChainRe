@@ -17,10 +17,9 @@
 package hexutil_test
 
 import (
+	"AQChainRe/pkg/common/hexutil"
 	"encoding/json"
 	"fmt"
-
-	"AQChainRe/common/hexutil"
 )
 
 type MyType [5]byte

@@ -27,6 +27,7 @@ import (
 	"AQChainRe/pkg/core/bloombits"
 	"AQChainRe/pkg/core/types"
 	"AQChainRe/pkg/eth/downloader"
+	"AQChainRe/pkg/eth/gasprice"
 	"AQChainRe/pkg/ethdb"
 	"AQChainRe/pkg/event"
 	"AQChainRe/pkg/internal/ethapi"
@@ -43,7 +44,6 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
-
 )
 
 type LesServer interface {
@@ -126,6 +126,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		shutdownChan:   make(chan bool),
 		stopDbUpgrade:  stopDbUpgrade,
 		networkId:      config.NetworkId,
+		gasPrice:       config.GasPrice,
 		validator:      config.Validator,
 		coinbase:       config.Coinbase,
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
@@ -164,7 +165,12 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine)
 	eth.miner.SetExtra(makeExtraData(config.ExtraData))
 
-	eth.ApiBackend = &EthApiBackend{eth}
+	eth.ApiBackend = &EthApiBackend{eth, nil}
+	gpoParams := config.GPO
+	if gpoParams.Default == nil {
+		gpoParams.Default = config.GasPrice
+	}
+	eth.ApiBackend.gpo = gasprice.NewOracle(eth.ApiBackend, gpoParams)
 
 	return eth, nil
 }

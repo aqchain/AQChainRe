@@ -421,6 +421,12 @@ web3._extend({
 			inputFormatter: [web3._extend.formatters.inputAddressFormatter, web3._extend.formatters.inputDefaultBlockNumberFormatter],
             outputFormatter: web3._extend.formatters.outputBigNumberFormatter
 		}),
+        new web3._extend.Method({
+			name: 'getOrigin',
+			call: 'eth_getOrigin',
+			params: 2,
+			inputFormatter: [null, web3._extend.formatters.inputDefaultBlockNumberFormatter],
+		}),
 		new web3._extend.Method({
 			name: 'sign',
 			call: 'eth_sign',

@@ -27,6 +27,7 @@ import (
 	"AQChainRe/pkg/crypto"
 	"AQChainRe/pkg/log"
 	"AQChainRe/pkg/p2p"
+	"AQChainRe/pkg/params"
 	"AQChainRe/pkg/rlp"
 	"AQChainRe/pkg/rpc"
 	"context"
@@ -38,6 +39,11 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
+)
+
+const (
+	defaultGas      = 90000
+	defaultGasPrice = 50 * params.Shannon
 )
 
 // PublicEthereumAPI provides an API to access Ethereum related information.
@@ -467,6 +473,25 @@ func (s *PublicBlockChainAPI) GetContribution(ctx context.Context, address commo
 	}
 	b := state.GetContribution(address)
 	return b, state.Error()
+}
+
+func (s *PublicBlockChainAPI) GetOrigin(ctx context.Context, data string, blockNr rpc.BlockNumber) (common.Address, error) {
+	stateRecord, _, err := s.b.StateRecordAndHeaderByNumber(ctx, blockNr)
+	if stateRecord == nil || err != nil {
+		return common.Address{}, err
+	}
+	b, _ := rlp.EncodeToBytes(data)
+	o := stateRecord.GetOrigin(common.BytesToHash(b))
+	return o, stateRecord.Error()
+}
+
+func (s *PublicBlockChainAPI) GetOwner(ctx context.Context, data []byte, blockNr rpc.BlockNumber) (common.Address, error) {
+	stateRecord, _, err := s.b.StateRecordAndHeaderByNumber(ctx, blockNr)
+	if stateRecord == nil || err != nil {
+		return common.Address{}, err
+	}
+	o := stateRecord.GetOwner(common.BytesToHash(data))
+	return o, stateRecord.Error()
 }
 
 // GetBlockByNumber returns the requested block. When blockNr is -1 the chain head is returned. When fullTx is true all
@@ -925,6 +950,16 @@ type SendTxArgs struct {
 
 // prepareSendTxArgs is a helper function that fills in default values for unspecified tx fields.
 func (args *SendTxArgs) setDefaults(ctx context.Context, b Backend) error {
+	if args.Gas == nil {
+		args.Gas = (*hexutil.Big)(big.NewInt(defaultGas))
+	}
+	if args.GasPrice == nil {
+		price, err := b.SuggestPrice(ctx)
+		if err != nil {
+			return err
+		}
+		args.GasPrice = (*hexutil.Big)(price)
+	}
 	if args.Value == nil {
 		args.Value = new(hexutil.Big)
 	}

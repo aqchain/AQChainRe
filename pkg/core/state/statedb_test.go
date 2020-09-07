@@ -18,8 +18,8 @@ package state
 
 import (
 	"AQChainRe/pkg/common"
-	"AQChainRe/pkg/ethdb"
 	"AQChainRe/pkg/core/types"
+	"AQChainRe/pkg/ethdb"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -32,7 +32,6 @@ import (
 	"testing/quick"
 
 	"gopkg.in/check.v1"
-
 )
 
 // Tests that updating a state trie does not leak any database writes prior to
@@ -198,7 +197,7 @@ func newTestAction(addr common.Address, r *rand.Rand) testAction {
 			args: make([]int64, 2),
 		},
 		{
-			name: "CreateRecord",
+			name: "CreateAccount",
 			fn: func(a testAction, s *StateDB) {
 				s.CreateAccount(addr)
 			},

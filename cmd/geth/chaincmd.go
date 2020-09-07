@@ -118,11 +118,16 @@ func dump(ctx *cli.Context) error {
 			fmt.Println("{}")
 			utils.Fatalf("block not found")
 		} else {
-			state, err := state.New(block.Root(), state.NewDatabase(chainDb))
+			stateDB, err := state.New(block.Root(), state.NewDatabase(chainDb))
 			if err != nil {
-				utils.Fatalf("could not create new state: %v", err)
+				utils.Fatalf("could not create new stateDB: %v", err)
 			}
-			fmt.Printf("%s\n", state.Dump())
+			fmt.Printf("%s\n", stateDB.Dump())
+			stateDBRecord, err := state.NewRecord(block.RecordRoot(), state.NewDatabase(chainDb))
+			if err != nil {
+				utils.Fatalf("could not create new stateDBRecord: %v", err)
+			}
+			fmt.Printf("%s\n", stateDBRecord.Dump())
 		}
 	}
 	chainDb.Close()

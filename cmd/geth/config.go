@@ -18,6 +18,7 @@ package main
 
 import (
 	"AQChainRe/cmd/utils"
+	"AQChainRe/pkg/dashboard"
 	"AQChainRe/pkg/eth"
 	"AQChainRe/pkg/node"
 	"AQChainRe/pkg/params"
@@ -76,6 +77,7 @@ type gethConfig struct {
 	Eth       eth.Config
 	Node      node.Config
 	Ethstats  ethstatsConfig
+	Dashboard dashboard.Config
 }
 
 func loadConfig(file string, cfg *gethConfig) error {
@@ -111,6 +113,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 	cfg := gethConfig{
 		Eth:       eth.DefaultConfig,
 		Node:      defaultNodeConfig(),
+		Dashboard: dashboard.DefaultConfig,
 	}
 
 	// Load config file.
@@ -128,6 +131,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 		utils.Fatalf("Failed to create the protocol stack: %v", err)
 	}
 	utils.SetEthConfig(ctx, stack, &cfg.Eth)
+	utils.SetDashboardConfig(ctx, &cfg.Dashboard)
 
 	return stack, cfg
 }
@@ -137,6 +141,10 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	stack, cfg := makeConfigNode(ctx)
 
 	utils.RegisterEthService(stack, &cfg.Eth)
+
+	if ctx.GlobalBool(utils.DashboardEnabledFlag.Name) {
+		utils.RegisterDashboardService(stack, &cfg.Dashboard)
+	}
 
 	// Add the Ethereum Stats daemon if requested.
 	if cfg.Ethstats.URL != "" {

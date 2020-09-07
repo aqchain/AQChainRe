@@ -22,7 +22,6 @@ import (
 	"AQChainRe/pkg/trie"
 	"encoding/json"
 	"fmt"
-
 )
 
 type DumpAccount struct {
@@ -82,35 +81,39 @@ func (self *StateDB) Dump() []byte {
 }
 
 type DumpRecord struct {
-	Origin      string            `json:"origin"`
-	Status      uint8            `json:"status"`
-	Root        string            `json:"root"`
-	Storage      map[string]string `json:"storage"`
+	Origin  string            `json:"origin"`
+	Owner   string            `json:"owner"`
+	Status  uint8             `json:"status"`
+	Root    string            `json:"root"`
+	Storage map[string]string `json:"storage"`
 }
 
 type Dump2 struct {
-	Root     string                 `json:"root"`
+	Root    string                `json:"root"`
 	Records map[string]DumpRecord `json:"records"`
 }
 
 func (self *StateDBRecord) RawDump() Dump2 {
 	dump := Dump2{
-		Root:     fmt.Sprintf("%x", self.trie.Hash()),
+		Root:    fmt.Sprintf("%x", self.trie.Hash()),
 		Records: make(map[string]DumpRecord),
 	}
 
 	it := trie.NewIterator(self.trie.NodeIterator(nil))
 	for it.Next() {
+		fmt.Println(it.Key)
 		addr := self.trie.GetKey(it.Key)
+		fmt.Println(common.ToHex(addr))
 		var data Record
 		if err := rlp.DecodeBytes(it.Value, &data); err != nil {
-			panic(err)
+			//panic(err)
 		}
 
 		obj := newObjectRecord(nil, common.BytesToHash(addr), data, nil)
 		account := DumpRecord{
-			Origin:      data.Origin.String(),
-			Root:         common.Bytes2Hex(data.Root[:]),
+			Origin:  data.Origin.String(),
+			Owner:   data.Owner.String(),
+			Root:    common.Bytes2Hex(data.Root[:]),
 			Storage: make(map[string]string),
 		}
 		storageIt := trie.NewIterator(obj.getTrie(self.db).NodeIterator(nil))
