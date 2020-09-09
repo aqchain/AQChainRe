@@ -485,12 +485,13 @@ func (s *PublicBlockChainAPI) GetOrigin(ctx context.Context, data string, blockN
 	return o, stateRecord.Error()
 }
 
-func (s *PublicBlockChainAPI) GetOwner(ctx context.Context, data []byte, blockNr rpc.BlockNumber) (common.Address, error) {
+func (s *PublicBlockChainAPI) GetOwner(ctx context.Context, data string, blockNr rpc.BlockNumber) (common.Address, error) {
 	stateRecord, _, err := s.b.StateRecordAndHeaderByNumber(ctx, blockNr)
 	if stateRecord == nil || err != nil {
 		return common.Address{}, err
 	}
-	o := stateRecord.GetOwner(common.BytesToHash(data))
+	b, _ := rlp.EncodeToBytes(data)
+	o := stateRecord.GetOwner(common.BytesToHash(b))
 	return o, stateRecord.Error()
 }
 
@@ -986,6 +987,11 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 
 // submitTransaction is a helper function that submits tx to txPool and logs a message.
 func submitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (common.Hash, error) {
+	stateRecord, _, _ := b.StateRecordAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+	bts, _ := rlp.EncodeToBytes(tx.Data())
+	if stateRecord.Exist(common.BytesToHash(bts)) {
+		return common.Hash{}, errors.New("exist data")
+	}
 	if err := tx.Validate(); err != nil {
 		return common.Hash{}, err
 	}

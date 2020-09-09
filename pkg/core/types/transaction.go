@@ -150,20 +150,21 @@ func (tx *Transaction) ChainId() *big.Int {
 // Valid the transaction when the types isn't the binary
 func (tx *Transaction) Validate() error {
 	if tx.Type() != Binary {
-		if tx.Type() != TransferData{
+		if tx.Type() != TransferData {
 			if tx.Value().Uint64() != 0 {
 				return errors.New("transaction value should be 0")
 			}
 		}
-		if tx.To() == nil && tx.Type() != LoginCandidate && tx.Type() != LogoutCandidate && tx.Type() != ConfirmationData && tx.Type()!=ConfirmationData{
+		if tx.To() == nil && tx.Type() != LoginCandidate && tx.Type() != LogoutCandidate && tx.Type() != ConfirmationData && tx.Type() != ConfirmationData {
 			return errors.New("receipient was required")
 		}
-		if tx.Type() == LoginCandidate ||  tx.Type() == LogoutCandidate{
+		if tx.Type() == LoginCandidate || tx.Type() == LogoutCandidate {
 			if len(tx.Data()) > 0 {
 				return errors.New("payload should be empty")
 			}
 		}
 	}
+
 	return nil
 }
 

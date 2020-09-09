@@ -27,6 +27,7 @@ import (
 	"AQChainRe/pkg/core/bloombits"
 	"AQChainRe/pkg/core/types"
 	"AQChainRe/pkg/eth/downloader"
+	"AQChainRe/pkg/eth/filters"
 	"AQChainRe/pkg/eth/gasprice"
 	"AQChainRe/pkg/ethdb"
 	"AQChainRe/pkg/event"
@@ -246,6 +247,12 @@ func (s *Ethereum) APIs() []rpc.API {
 			Namespace: "net",
 			Version:   "1.0",
 			Service:   s.netRPCService,
+			Public:    true,
+		},
+		{
+			Namespace: "eth",
+			Version:   "1.0",
+			Service:   filters.NewPublicFilterAPI(s.ApiBackend, false),
 			Public:    true,
 		},
 	}...)
