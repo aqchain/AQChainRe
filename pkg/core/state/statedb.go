@@ -205,6 +205,14 @@ func (self *StateDB) GetNonce(addr common.Address) uint64 {
 	return 0
 }
 
+func (self *StateDB) GetRecords(addr common.Address) []common.Hash {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.Records()
+	}
+	return nil
+}
+
 func (self *StateDB) GetCode(addr common.Address) []byte {
 	stateObject := self.getStateObject(addr)
 	if stateObject != nil {
@@ -242,14 +250,6 @@ func (self *StateDB) GetState(a common.Address, b common.Hash) common.Hash {
 		return stateObject.GetState(self.db, b)
 	}
 	return common.Hash{}
-}
-
-func (self *StateDB) GetRecord(addr common.Address) types.RecordContextProto {
-	stateObject := self.getStateObject(addr)
-	if stateObject != nil {
-		return stateObject.Record()
-	}
-	return  types.RecordContextProto{}
 }
 
 // StorageTrie returns the storage trie of an prev.
@@ -327,6 +327,52 @@ func (self *StateDB) SetNonce(addr common.Address, nonce uint64) {
 	}
 }
 
+func (self *StateDB) AddRecords(addr common.Address, record common.Hash) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		records := stateObject.Records()
+		// 遍历检查是否已经存在该记录 存在的话就不进行添加
+		if len(records) > 0 {
+			for _, r := range records {
+				if r == record {
+					return
+				}
+			}
+			records = append(records, record)
+			stateObject.setRecords(records)
+		} else {
+			stateObject.setRecords([]common.Hash{record})
+		}
+	}
+}
+
+func (self *StateDB) RemoveRecords(addr common.Address, record common.Hash) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		records := stateObject.Records()
+		if len(records) > 0 {
+			index := -1
+			for k, r := range records {
+				if r == record {
+					index = k
+					break
+				}
+			}
+			if index > 0 {
+				records = append(records[:index], records[index+1:]...)
+				stateObject.setRecords(records)
+			}
+		}
+	}
+}
+
+func (self *StateDB) SetRecords(addr common.Address, records []common.Hash) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetRecords(records)
+	}
+}
+
 func (self *StateDB) SetCode(addr common.Address, code []byte) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
@@ -338,13 +384,6 @@ func (self *StateDB) SetState(addr common.Address, key common.Hash, value common
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetState(self.db, key, value)
-	}
-}
-
-func (self *StateDB)SetRecord(addr common.Address, proto types.RecordContextProto)  {
-	stateObject := self.GetOrNewStateObject(addr)
-	if stateObject != nil {
-		stateObject.SetRecord(proto)
 	}
 }
 

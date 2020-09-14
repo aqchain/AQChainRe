@@ -22,7 +22,7 @@ type stateObjectRecord struct {
 	dbErr error
 
 	// Write caches.
-	trie Trie // storage trie, which becomes non-nil on first access
+	trie        Trie // storage trie, which becomes non-nil on first access
 	confirmTrie Trie
 
 	cachedStorage Storage // Storage entry cache to avoid duplicate reads
@@ -31,10 +31,10 @@ type stateObjectRecord struct {
 	// Cache flags.
 	// When an object is marked suicided it will be delete from the trie
 	// during the "update" phase of the state transition.
-	suicided  bool
-	touched   bool
-	deleted   bool
-	onDirty   func(addr common.Hash) // Callback method to mark a state object newly dirty
+	suicided bool
+	touched  bool
+	deleted  bool
+	onDirty  func(addr common.Hash) // Callback method to mark a state object newly dirty
 }
 
 /*// empty returns whether the prev is considered empty.
@@ -42,14 +42,14 @@ func (s *stateObject) empty() bool {
 	return s.data.Nonce == 0 && s.data.Balance.Sign() == 0 && s.data.Contribution.Sign() == 0 && bytes.Equal(s.data.CodeHash, emptyCodeHash)
 }*/
 
-
 // Record 记录保存的数据
 type Record struct {
 	Origin common.Address
 	Owner  common.Address
+	Txs    []common.Hash
 	Status uint8
 
-	Root     common.Hash  // merkle root of the storage trie
+	Root common.Hash // merkle root of the storage trie
 }
 
 // newObject creates a state object.
@@ -98,7 +98,6 @@ func (c *stateObjectRecord) touch() {
 	c.touched = true
 }
 
-
 func (c *stateObjectRecord) getTrie(db Database) Trie {
 	if c.trie == nil {
 		var err error
@@ -136,16 +135,20 @@ func (self *stateObjectRecord) GetState(db Database, key common.Hash) common.Has
 	return value
 }
 
-func  (self *stateObjectRecord) Origin() common.Address {
+func (self *stateObjectRecord) Origin() common.Address {
 	return self.data.Origin
 }
 
-func  (self *stateObjectRecord) Owner() common.Address {
+func (self *stateObjectRecord) Owner() common.Address {
 	return self.data.Owner
 }
 
-func  (self *stateObjectRecord) Status() uint8 {
+func (self *stateObjectRecord) Status() uint8 {
 	return self.data.Status
+}
+
+func (self *stateObjectRecord) Txs() []common.Hash {
+	return self.data.Txs
 }
 
 func (self *stateObjectRecord) SetOrigin(address common.Address) {
@@ -180,10 +183,26 @@ func (self *stateObjectRecord) setOwner(address common.Address) {
 	}
 }
 
+func (self *stateObjectRecord) SetTxs(txs []common.Hash) {
+	self.db.journal = append(self.db.journal, txsChange{
+		hash: &self.hash,
+		prev: self.data.Txs,
+	})
+	self.setTxs(txs)
+}
+
+func (self *stateObjectRecord) setTxs(txs []common.Hash) {
+	self.data.Txs = txs
+	if self.onDirty != nil {
+		self.onDirty(self.Hash())
+		self.onDirty = nil
+	}
+}
+
 func (self *stateObjectRecord) SetStatus(status uint8) {
 	self.db.journal = append(self.db.journal, statusChange{
 		hash: &self.hash,
-		prev:  self.data.Status,
+		prev: self.data.Status,
 	})
 	self.setStatus(status)
 }
@@ -272,5 +291,3 @@ func (self *stateObjectRecord) deepCopy(db *StateDBRecord, onDirty func(addr com
 func (c *stateObjectRecord) Hash() common.Hash {
 	return c.hash
 }
-
-

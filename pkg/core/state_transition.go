@@ -232,7 +232,7 @@ func applyPocMessage(pocContext *types.PocContext, msg types.Message) error {
 	return nil
 }
 
-func ApplyDataMessage(msg Message, statedb *state.StateDB, statedbRecord *state.StateDBRecord) (failed bool, err error) {
+func ApplyDataMessage(txHash common.Hash, msg Message, statedb *state.StateDB, statedbRecord *state.StateDBRecord) (failed bool, err error) {
 	st := NewStateTransition(msg, statedb)
 
 	if err = st.preCheck(); err != nil {
@@ -241,12 +241,8 @@ func ApplyDataMessage(msg Message, statedb *state.StateDB, statedbRecord *state.
 
 	msg = st.msg
 	sender := st.from()
-	data := msg.Data()
-	fmt.Println(data)
 	b, _ := rlp.EncodeToBytes(msg.Data())
-	fmt.Println(b)
 	hash := common.BytesToHash(b)
-	fmt.Println(hash)
 	// 增加账户的交易数
 	st.statedb.SetNonce(sender, st.statedb.GetNonce(sender)+1)
 
@@ -261,9 +257,12 @@ func ApplyDataMessage(msg Message, statedb *state.StateDB, statedbRecord *state.
 		obj := statedbRecord.GetOrNewStateObject(hash)
 		obj.SetOrigin(sender)
 		obj.SetOwner(sender)
+		obj.SetTxs([]common.Hash{txHash})
 
-		// 贡献值计算 先直接加1e+18
-		statedb.AddContribution(sender, big.NewInt(1e+18))
+		// 添加账户的记录
+		statedb.AddRecords(sender, hash)
+		// 贡献值计算 先直接加2e+18
+		statedb.AddContribution(sender, big.NewInt(2e+18))
 		log.Info("ConfirmationData Add 1e+18 Contribution")
 		log.Info(fmt.Sprintf("Transition Sender %s", sender))
 
@@ -282,6 +281,12 @@ func ApplyDataMessage(msg Message, statedb *state.StateDB, statedbRecord *state.
 		// 转移拥有者
 		statedbRecord.SetOwner(hash, st.to())
 
+		// 添加交易记录
+		statedbRecord.AddTxHash(hash, txHash)
+
+		// 为账户添加删除记录
+		statedb.AddRecords(st.to(), txHash)
+		statedb.RemoveRecords(sender, txHash)
 		// 贡献值
 		statedb.AddContribution(sender, big.NewInt(1e+18))
 		log.Info("TransferData Add 1e+18 Contribution")

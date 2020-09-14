@@ -174,8 +174,6 @@ func (self *StateDBRecord) GetState(a common.Hash, b common.Hash) common.Hash {
 }
 
 func (self *StateDBRecord) GetOrigin(addr common.Hash) common.Address {
-	fmt.Println(addr.String())
-	fmt.Println(addr)
 	stateObject := self.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.Origin()
@@ -189,6 +187,14 @@ func (self *StateDBRecord) GetOwner(addr common.Hash) common.Address {
 		return stateObject.Owner()
 	}
 	return common.Address{}
+}
+
+func (self *StateDBRecord) GetRecordTxs(addr common.Hash) []common.Hash {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.Txs()
+	}
+	return []common.Hash{}
 }
 
 func (self *StateDBRecord) GetStatus(addr common.Hash) uint8 {
@@ -233,6 +239,14 @@ func (self *StateDBRecord) SetOwner(addr common.Hash, account common.Address) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetOrigin(account)
+	}
+}
+
+func (self *StateDBRecord) AddTxHash(addr common.Hash, tx common.Hash) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		txs := append(stateObject.Txs(), tx)
+		stateObject.SetTxs(txs)
 	}
 }
 

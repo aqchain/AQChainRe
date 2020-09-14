@@ -475,6 +475,15 @@ func (s *PublicBlockChainAPI) GetContribution(ctx context.Context, address commo
 	return b, state.Error()
 }
 
+func (s *PublicBlockChainAPI) RecordExist(ctx context.Context, data string, blockNr rpc.BlockNumber) (bool, error) {
+	stateRecord, _, err := s.b.StateRecordAndHeaderByNumber(ctx, blockNr)
+	if stateRecord == nil || err != nil {
+		return false, err
+	}
+	b, _ := rlp.EncodeToBytes(data)
+	return stateRecord.Exist(common.BytesToHash(b)), stateRecord.Error()
+}
+
 func (s *PublicBlockChainAPI) GetOrigin(ctx context.Context, data string, blockNr rpc.BlockNumber) (common.Address, error) {
 	stateRecord, _, err := s.b.StateRecordAndHeaderByNumber(ctx, blockNr)
 	if stateRecord == nil || err != nil {
@@ -493,6 +502,16 @@ func (s *PublicBlockChainAPI) GetOwner(ctx context.Context, data string, blockNr
 	b, _ := rlp.EncodeToBytes(data)
 	o := stateRecord.GetOwner(common.BytesToHash(b))
 	return o, stateRecord.Error()
+}
+
+func (s *PublicBlockChainAPI) GetRecordTxs(ctx context.Context, data string, blockNr rpc.BlockNumber) ([]common.Hash, error) {
+	stateRecord, _, err := s.b.StateRecordAndHeaderByNumber(ctx, blockNr)
+	if stateRecord == nil || err != nil {
+		return []common.Hash{}, err
+	}
+	b, _ := rlp.EncodeToBytes(data)
+	txs := stateRecord.GetRecordTxs(common.BytesToHash(b))
+	return txs, stateRecord.Error()
 }
 
 // GetBlockByNumber returns the requested block. When blockNr is -1 the chain head is returned. When fullTx is true all

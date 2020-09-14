@@ -20,7 +20,7 @@ type (
 		prev *stateObjectRecord
 	}
 	suicideChangeRecord struct {
-		record     *common.Hash
+		record      *common.Hash
 		prev        bool // whether account had already suicided
 		prevbalance *big.Int
 	}
@@ -44,21 +44,30 @@ type (
 		prevDirty bool
 	}
 
-	originChange struct{
+	originChange struct {
 		hash *common.Hash
 		prev common.Address
 	}
 
-	ownerChange struct{
+	ownerChange struct {
 		hash *common.Hash
 		prev common.Address
+	}
+
+	txsChange struct {
+		hash *common.Hash
+		prev []common.Hash
 	}
 
 	statusChange struct {
 		hash *common.Hash
-		prev    uint8
+		prev uint8
 	}
 )
+
+func (ch txsChange) undo(s *StateDBRecord) {
+	s.getStateObject(*ch.hash).SetTxs(ch.prev)
+}
 
 func (ch statusChange) undo(s *StateDBRecord) {
 	s.getStateObject(*ch.hash).setStatus(ch.prev)
@@ -104,4 +113,3 @@ func (ch suicideChangeRecord) undo(s *StateDBRecord) {
 		//obj.setBalance(ch.prevbalance)
 	}
 }
-

@@ -427,6 +427,18 @@ web3._extend({
 			params: 2,
 			inputFormatter: [null, web3._extend.formatters.inputDefaultBlockNumberFormatter],
 		}),
+        new web3._extend.Method({
+			name: 'getOwner',
+			call: 'eth_getOwner',
+			params: 2,
+			inputFormatter: [null, web3._extend.formatters.inputDefaultBlockNumberFormatter],
+		}),
+        new web3._extend.Method({
+			name: 'getRecordTxs',
+			call: 'eth_getRecordTxs',
+			params: 2,
+			inputFormatter: [null, web3._extend.formatters.inputDefaultBlockNumberFormatter],
+		}),
 		new web3._extend.Method({
 			name: 'sign',
 			call: 'eth_sign',

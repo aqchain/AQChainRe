@@ -18,7 +18,6 @@ package state
 
 import (
 	"AQChainRe/pkg/common"
-	"AQChainRe/pkg/core/types"
 	"AQChainRe/pkg/crypto"
 	"AQChainRe/pkg/rlp"
 	"AQChainRe/pkg/trie"
@@ -26,7 +25,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-
 )
 
 var emptyCodeHash = crypto.Keccak256(nil)
@@ -76,9 +74,9 @@ type stateObject struct {
 	dbErr error
 
 	// Write caches.
-	trie Trie // storage trie, which becomes non-nil on first access
+	trie        Trie // storage trie, which becomes non-nil on first access
 	confirmTrie Trie
-	code Code // contract bytecode, which gets set when code is loaded
+	code        Code // contract bytecode, which gets set when code is loaded
 
 	cachedStorage Storage // Storage entry cache to avoid duplicate reads
 	dirtyStorage  Storage // Storage entries that need to be flushed to disk
@@ -101,13 +99,12 @@ func (s *stateObject) empty() bool {
 // Account is the Ethereum consensus representation of accounts.
 // These objects are stored in the main prev trie.
 type Account struct {
-	Nonce   uint64
-	Balance *big.Int
-	Contribution *big.Int // 添加Contribution
+	Nonce        uint64
+	Balance      *big.Int
+	Contribution *big.Int      // 添加Contribution
+	Records      []common.Hash // 拥有文件的hash
 
-	Root     common.Hash  // merkle root of the storage trie
-
-	Record types.RecordContextProto // 账户的数据记录
+	Root common.Hash // merkle root of the storage trie
 
 	CodeHash []byte
 }
@@ -122,6 +119,9 @@ func newObject(db *StateDB, address common.Address, data Account, onDirty func(a
 	}
 	if data.CodeHash == nil {
 		data.CodeHash = emptyCodeHash
+	}
+	if data.Records == nil {
+		data.Records = make([]common.Hash, 0)
 	}
 	return &stateObject{
 		db:            db,
@@ -260,6 +260,22 @@ func (self *stateObject) CommitTrie(db Database, dbw trie.DatabaseWriter) error 
 	return err
 }
 
+func (self *stateObject) SetRecords(txs []common.Hash) {
+	self.db.journal = append(self.db.journal, recordChange{
+		account: &self.address,
+		prev:    self.data.Records,
+	})
+	self.setRecords(txs)
+}
+
+func (self *stateObject) setRecords(txs []common.Hash) {
+	self.data.Records = txs
+	if self.onDirty != nil {
+		self.onDirty(self.Address())
+		self.onDirty = nil
+	}
+}
+
 // AddBalance removes amount from c's balance.
 // It is used to add funds to the destination prev of a transfer.
 func (c *stateObject) AddBalance(amount *big.Int) {
@@ -308,7 +324,6 @@ func (c *stateObject) AddContribution(amount *big.Int) {
 		if c.empty() {
 			c.touch()
 		}
-
 		return
 	}
 	c.setContribution(new(big.Int).Add(c.Contribution(), amount))
@@ -433,24 +448,8 @@ func (self *stateObject) Nonce() uint64 {
 	return self.data.Nonce
 }
 
-func (self *stateObject)SetRecord(record types.RecordContextProto)  {
-	self.db.journal = append(self.db.journal, recordChange{
-		account: &self.address,
-		prev:    self.data.Record,
-	})
-	self.setRecord(record)
-}
-
-func (self *stateObject) setRecord(record types.RecordContextProto) {
-	self.data.Record = record
-	if self.onDirty != nil {
-		self.onDirty(self.Address())
-		self.onDirty = nil
-	}
-}
-
-func (self *stateObject)Record() types.RecordContextProto {
-	return self.data.Record
+func (self *stateObject) Records() []common.Hash {
+	return self.data.Records
 }
 
 // Never called, but must be present to allow stateObject to be used

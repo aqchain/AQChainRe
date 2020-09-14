@@ -111,7 +111,7 @@ func ApplyTransaction(config *params.ChainConfig, pocContext *types.PocContext, 
 	}
 
 	if msg.Type() == types.ConfirmationData || msg.Type() == types.AuthorizationData || msg.Type() == types.TransferData {
-		failed, err = ApplyDataMessage(msg, statedb, statedbRecord)
+		failed, err = ApplyDataMessage(tx.Hash(), msg, statedb, statedbRecord)
 		if err != nil {
 			return nil, err
 		}

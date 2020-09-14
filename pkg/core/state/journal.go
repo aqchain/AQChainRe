@@ -18,9 +18,7 @@ package state
 
 import (
 	"AQChainRe/pkg/common"
-	"AQChainRe/pkg/core/types"
 	"math/big"
-
 )
 
 type journalEntry interface {
@@ -61,12 +59,12 @@ type (
 		key, prevalue common.Hash
 	}
 	codeChange struct {
-		account       *common.Address
+		account            *common.Address
 		prevcode, prevhash []byte
 	}
 	recordChange struct {
 		account *common.Address
-		prev    types.RecordContextProto
+		prev    []common.Hash
 	}
 
 	// Changes to other state values.
@@ -115,7 +113,7 @@ func (ch touchChange) undo(s *StateDB) {
 }
 
 func (ch recordChange) undo(s *StateDB) {
-	s.getStateObject(*ch.account).setRecord(ch.prev)
+	s.getStateObject(*ch.account).setRecords(ch.prev)
 }
 
 func (ch balanceChange) undo(s *StateDB) {
